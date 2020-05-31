@@ -228,7 +228,7 @@ def CreateBlock(openTransactions,lastBlockHash,nonce):
 def MineBlock():
 	lastBlock=GetLastBlock()
 	hashedBlock=HashBlock(lastBlock)
-	nonce=pow()
+	nonce=ProofOfWork()
 	rewardTransaction={
 		'sender':'MINING',
 		'recipient': owner,
