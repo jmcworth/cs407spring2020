@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Brittany Miller-Burt
 Joe Collinsworth
@@ -10,16 +9,17 @@ SOURCE: https://blockgeeks.com/guides/python-blockchain-2/
 import os
 import hashlib
 import json
+import sys
 
 '''###############################################################
 	Genesis block and empty arrays. 
 	Goal is to write to the file to keep track of the blockchain. 
 ###############################################################'''
 genesisBlock = {
-	'previousHash':'',
-	'index':0,
-	'transaction':[],
-	'nonce':23		
+	"previousHash":"",
+	"index":0,
+	"transaction":[],
+	"nonce":23		
 }
 
 blockchain=[]
@@ -28,7 +28,7 @@ openTransactions=[]
 
 file="blockchain.txt"
 
-owner='EliteHacker'
+owner="EliteHacker"
 
 '''####################################################################
 	Menus to provide user interaction
@@ -42,16 +42,14 @@ def startMenu():
 	userInput=input()
 	if(userInput=='n' or userInput=='N'):
 		InitializeBlockchain()
-		print("Blockchain intialized...")
-		WillContinue()
 	elif(userInput=='e' or userInput=='E'):
-		print("")
+		print("Loading existing blockchain")
 		PrintBlockchain()
 		print("")
-		WillContinue()
 	else:
 		print("Invalid Selection")
 		return startMenu()
+	
 '''####################################################################
 	Regular menu that leads to further interaction
 ####################################################################'''	
@@ -61,24 +59,43 @@ def menu():
 	print("  2. Print current blockchain")
 	print("  3. Manipulate existing data")
 	print("  4. Mine for a block.")
-	print("  5. Save and exit")
+	print("  5. Check if chain has been altered")
+	print("  6. Create a new block chain. (This will delete any existing one.)")
+	print("  7. Save and Exit")
 	selection=int(input("Your selection:"))
 	if(selection==1):
 		AddValue()
 	elif(selection==2):
 		PrintBlockchain()
-		WillContinue()
+		Continue()
 	elif(selection==3):
 		ManipulateData()
-		WillContinue()
+		Continue()
 	elif(selection==4):
 		MineBlock()
-		WillContinue()
+		Continue()
 	elif(selection==5):
+		IsChainValid()
+	elif(selection==6):
+		InitializeBlockchain()
+	elif(selection==7):
 		Save()
+		sys.exit		
 	else:
 		print("Invalid selection.")
 		return menu()
+	
+'''####################################################################
+	opening and reading file and stripping any unnecessary characters out
+####################################################################'''
+def OpenFile():	
+	fileBlockchain=open(file,"r")
+	fileInfo=fileBlockchain.read()
+	fileInfo=json.loads(json.dumps(fileInfo))
+	fileInfo=fileInfo.replace('\\','')
+	fileBlockchain.close()
+	blockchain.append(fileInfo)
+	
 
 '''####################################################################
 	Used for creating block to add to transaction info
@@ -94,6 +111,8 @@ def GetTransactionInfo():
 def Save():
 	fileBlockchain=open(file,"w")
 	fileBlockchain.write(str(blockchain))
+	fileBlockchain.close()
+	print("Blockchain saved.")
 	
 '''####################################################################
 	Allows user to see their blockchain so far saved to the file.
@@ -102,13 +121,14 @@ def Save():
 ####################################################################'''
 def PrintBlockchain():
 	if os.stat(file).st_size==0:
-		print("No blockchain exists yet.")
-		return startMenu()
+		print("Blockchain hasn't been saved yet.")
+		print("Checking local memory...")
+		if(len(blockchain)==0):
+			print("No blockchain exists")
+			return Continue()
 	else:
-		fileBlockchain=open(file,"r")
-		blockchain.append(fileBlockchain.read())
 		print(blockchain)
-		return menu()
+		return Continue()
 
 '''####################################################################
 	If users want to create a whole new block chain this function clears
@@ -120,25 +140,16 @@ def InitializeBlockchain():
 		fileBlockchain=open(file,"r+")
 		fileBlockchain.truncate(0)
 		fileBlockchain.close()
-	hashBlock=hashlib.sha256(json.dumps(genesisBlock).encode()).hexdigest()
-	blockchain.append(hashBlock)
+	blockchain.append(genesisBlock)
+	print("Blockchain intialized...")
+	Continue()
 
 '''####################################################################
 	Lets users quit or not, still behaves strangely
 ####################################################################'''	
-def WillContinue(cont=True):
-	if cont is True:
-		print("Continue? 'y' or 'n'")
-		doContinue=input()
-		if(doContinue=='y' or doContinue=='Y'):
-			return menu()
-		elif(doContinue=='n' or doContinue=='N'):
-			exit
-		else:
-			print("Invalid selection.")
-			return WillContinue()
-	else:
-		exit
+def Continue():
+	input("Press 'Enter' to continue...")
+	return menu()
 
 '''####################################################################
 	Gets last block in chain. Returns to the menu if it's empty,
@@ -158,14 +169,18 @@ def GetLastBlock():
 	Takes information from GetTransactionInfo() and adds this to the 
 	existing transactions
 ####################################################################'''
-def AddValue(recipient,amount,sender=owner):
+def AddValue(sender=owner):
 	recipient,amount=GetTransactionInfo()
 	transaction={
-		'sender':owner,
-		'recipient':recipient,
-		'amount':amount
+		"sender":owner,
+		"recipient":recipient,
+		"amount":amount
 	}
 	openTransactions.append(transaction)
+	newBlock=CreateBlock(openTransactions,HashBlock(GetLastBlock()),ProofOfWork())
+	blockchain.append(newBlock)
+	print("Transaction added to blockchain.")
+	Continue()
 	
 '''####################################################################
 	Checks to see if miner's POW result is valid. Might want to simplify this and
@@ -175,7 +190,7 @@ def IsValidProof(transactions,prevHash,nonce):
 	guess=(str(transactions)+str(prevHash)+str(nonce)).encode()
 	guessHash=hashlib.sha256(guess).hexdigest()
 	print(guessHash)
-	return guessHash[0:2]=='00'
+	return guessHash[0:2]=="00"
 
 '''####################################################################
 	Hashes a given block that has already been created
@@ -201,13 +216,24 @@ def ProofOfWork():
 	rendered invalid if someone tries to mess with the data. However, I haven't 
 	finished it yet
 ####################################################################'''
-def ManipulateData(val):
+def ManipulateData():
 	if len(blockchain)==0:
 		print("Cannot alter empty blockchain.")
-		return menu()
-	blockchain[0]=val
-	if IsValidProof:
-		("")
+		menu()
+	print("Current value of the genesis block nonce is 23.")
+	genesisBlockHashOriginal=HashBlock(genesisBlock)
+	val=float(input("Enter a number to alter the nonce of the genesis block:"))
+	genesisBlock["nonce"]=val
+	genesisBlockManipulated=HashBlock(genesisBlock)
+	if genesisBlockHashOriginal==genesisBlockManipulated:
+		print("You've entered 23. Please enter a different number.")
+		ManipulateData()
+	else:
+		print("Original Hash: ",str(genesisBlockHashOriginal))
+		print("New Hash: ",str(genesisBlockManipulated))
+		input("Press enter to continue...")
+		IsChainValid()
+		
 
 '''####################################################################
 	Creates a new block. Currently just used in MineBlock() but I don't think
@@ -215,10 +241,10 @@ def ManipulateData(val):
 ####################################################################'''
 def CreateBlock(openTransactions,lastBlockHash,nonce):
 	block={
-		'previousHash':lastBlockHash,
-		'index':len(blockchain),
-		'transaction':openTransactions,
-		'nonce':nonce
+		"previousHash":lastBlockHash,
+		"index":len(blockchain),
+		"transaction":openTransactions,
+		"nonce":nonce
 	}
 	return block
 
@@ -230,17 +256,50 @@ def MineBlock():
 	hashedBlock=HashBlock(lastBlock)
 	nonce=ProofOfWork()
 	rewardTransaction={
-		'sender':'MINING',
-		'recipient': owner,
-		'amount':10.0		
+		"sender":"MINING",
+		"recipient": owner,
+		"amount":10.0		
 	}
 	openTransactions.append(rewardTransaction)
 	block=CreateBlock(openTransactions,hashedBlock,nonce)
 	blockchain.append(block)
+	Continue()
 
+'''####################################################################
+	Check if Chain is valid
+####################################################################'''
+def IsChainValid():
+	isValid=True
+	copyChain=blockchain
+	hashOrig=hashlib.sha256(str(copyChain).encode())
+	blockchain.clear()
+	OpenFile()
+	hashNew=hashlib.sha256(str(blockchain).encode())
+	if hashOrig.hexdigest()==hashNew.hexdigest():
+		print("Chain is not compromised.")
+		Continue()
+		isValid=False;
+		print("Chain has been tampered.")
+		blockchain.clear()
+		blockchain.append(copyChain)
+		Continue()
+	else:
+		isValid=False;
+		print("Chain has been tampered.")
+		blockchain.clear()
+		blockchain.append(copyChain)
+		Continue()
+	return isValid
+		
 
 '''####################################################################
 	Program entry point
 ####################################################################'''
-startMenu()
+OpenFile()
+PrintBlockchain()
+
+
+
+
+
 
