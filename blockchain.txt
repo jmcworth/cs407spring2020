@@ -1,0 +1,1 @@
+["[{'previousHash': '', 'index': 0, 'transaction': [], 'nonce': 23}]", {'previousHash': '630e620d4e88dbbe37b1e75ecf1ad2e40de16c4694c543b820795b701ab394cf', 'index': 1, 'transaction': [{'sender': 'MINING', 'recipient': 'EliteHacker', 'amount': 10.0}], 'nonce': 733}]
